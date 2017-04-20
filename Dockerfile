@@ -4,7 +4,7 @@ RUN useradd --user-group --create-home --shell /bin/false kbenson && apt-get
 
 ENV HOME=/home/kbenson
 
-COPY app.js $HOME/app/
+COPY server.js $HOME/app/
 
 COPY package.json $HOME/app/
 
@@ -20,4 +20,4 @@ RUN chown -R kbenson:kbenson $HOME/*
 USER kbenson
 
 EXPOSE 8080
-CMD ["node", "app.js"]
+CMD ["npm", "start"]
