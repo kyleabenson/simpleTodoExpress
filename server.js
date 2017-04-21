@@ -6,9 +6,12 @@ var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 
 var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
-    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0';
+    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
+    mongo_port = process.env.MONGO_PORT || process.env.OPENSHIFT_MONGO_PORT || 27017,
+    mongo_ip = process.argv[2] || process.env.OPENSHIFT_MONGO_IP || 'mongodb';
 
-mongoose.connect('mongodb://app_test:test@10.11.217.162:27017/todos');
+var dbHost = 'mongodb://'+ mongo_ip + '/test';
+mongoose.connect(dbHost);
 
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -39,15 +42,14 @@ app.route('/api/todos')
       if (err)
         response.send(err);
         Todo.find(function(err, todos_list){
-          if (err){
+          if (err)
             response.send(err);
-          }
 
           response.json(todos_list);
         });
     });
 
-  })
+  });
 
 app.route('/api/todos/:todo_id')
   .delete(function(request, response, next){
@@ -82,3 +84,4 @@ var Todo = mongoose.model('todo', {
 
 app.listen(port, ip);
 console.log('Server running on http://%s:%s', ip, port);
+console.log('Db host is %s',dbHost);
