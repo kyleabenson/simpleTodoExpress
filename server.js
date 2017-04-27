@@ -8,15 +8,28 @@ var methodOverride = require('method-override');
 var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
     ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
     mongo_port = process.env.MONGO_PORT || process.env.OPENSHIFT_MONGO_PORT || 27017,
-    mongo_ip = process.argv[2] || process.env.OPENSHIFT_MONGO_IP || 'mongodb';
+    mongo_ip = process.env.MONGO_IP || process.env.OPENSHIFT_MONGO_IP;
 
-var dbHost = 'mongodb://'+ mongo_ip + '/test';
-mongoose.connect(dbHost);
+var mongoURL = 'mongodb://127.0.0.1/test',
+    mongoURLLabel = 'mongodb://127.0.0.1/test';
 
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function() {
-  // we're connected!
+var db = null,
+    dbDetails = new Object();
+
+
+var initDb = function(callback) {
+  if (mongoURL == null) return;
+  if (mongoose == null) return;
+
+  db = mongoose.createConnection(mongoURL);
+  console.log('Connected to MongoDB at: %s', mongoURL);
+
+};
+// attempt initial setup of DB
+initDb(function(err){});
+var Todo = db.model('todo', {
+                  text : String,
+                  completed: Boolean
 });
 
 app.use(express.static(__dirname + '/public'));
@@ -24,15 +37,20 @@ app.use(bodyParser.urlencoded({'extended':'true'}));            // parse applica
 app.use(bodyParser.json());                                     // parse application/json
 app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
 app.use(methodOverride());
-// var todos = [{text: "Buy milk"}, {text:"Pick up drycleaning"},{text:"Feed dog"}]
+var todos = [{text: "Buy milk"}, {text:"Pick up drycleaning"},{text:"Feed dog"}];
 
 app.route('/api/todos')
   .get(function(request, response, next){
-    Todo.find(function(err, todos_list) {
-           // if there is an error retrieving, send the error. nothing after res.send(err) will execute
-           if (err) response.send(err);
-           response.json(todos_list); // return all todos in JSON format
-       });
+    if (!db) {
+      initDb(function(err){});
+    }
+    if (db){
+      Todo.find(function(err, todos, callback) {
+       if (err) response.send(err);
+       response.json(todos); // return all todos in JSON format
+      });
+      console.log('after find');
+    }
   })
   .post(function(request, response, next){
     Todo.create({
@@ -41,11 +59,11 @@ app.route('/api/todos')
     }, function(err, todo){
       if (err)
         response.send(err);
-        Todo.find(function(err, todos_list){
+        Todo.find(function(err, todos){
           if (err)
             response.send(err);
 
-          response.json(todos_list);
+          response.json(todos);
         });
     });
 
@@ -55,11 +73,11 @@ app.route('/api/todos/:todo_id')
   .delete(function(request, response, next){
       Todo.remove({ _id: request.params.todo_id}, function(err){
           if (err) response.send(err);
-          Todo.find(function(err, todos_list){
+          Todo.find(function(err, todos){
             if (err){
               response.send(err);
             }
-            response.json(todos_list);
+            response.json(todos);
           });
       });
   })
@@ -67,21 +85,21 @@ app.route('/api/todos/:todo_id')
     console.log(request);
     Todo.findByIdAndUpdate({_id: request.params.todo_id},{ $set: {completed: request.query}}, function(err, todo){
       if (err) return handleError(err);
-      Todo.find(function(err, todos_list){
+      Todo.find(function(err, todos){
         if (err){
           response.send(err);
         }
-        response.json(todos_list);
+        response.json(todos);
       });
 
     });
   })
 
-var Todo = mongoose.model('todo', {
-        text : String,
-        completed: Boolean
-});
+
+
+// initDb(function(err){
+//     console.log('Error connecting to Mongo. Message:\n'+err);
+//   });
 
 app.listen(port, ip);
 console.log('Server running on http://%s:%s', ip, port);
-console.log('Db host is %s',dbHost);
