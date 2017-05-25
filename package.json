@@ -14,7 +14,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "IP=0.0.0.0 PORT=3030 mocha tests/*_test.js"
+    "test": "mocha tests/*_test.js"
   },
   "keywords": [],
   "author": "",
